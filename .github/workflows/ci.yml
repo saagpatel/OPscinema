@@ -28,6 +28,8 @@ jobs:
           node-version: "20"
       - name: Install UI deps
         run: npm --prefix apps/desktop/ui ci
+      - name: Build UI dist
+        run: npm --prefix apps/desktop/ui run build
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
