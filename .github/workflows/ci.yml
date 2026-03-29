@@ -19,7 +19,7 @@ jobs:
   checks:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup Node
@@ -47,7 +47,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_soak == 'true' }}
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Capture Soak Test (Optional)

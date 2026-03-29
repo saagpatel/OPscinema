@@ -25,7 +25,7 @@ jobs:
       OPSCINEMA_DETERMINISTIC_IDS: "1"
       OPSCINEMA_CAPTURE_BURST_FRAMES: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup Node
@@ -48,7 +48,7 @@ jobs:
     env:
       OPSCINEMA_TAURI_BUNDLES: app,dmg
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup Node
