@@ -1,41 +1,58 @@
 # OpsCinema Suite
 
-Local-first macOS desktop suite scaffold implementing the codex contract pack.
+[![Rust](https://img.shields.io/badge/rust-%23dea584?style=flat-square&logo=rust)](#) [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](#)
 
-## Setup
+> Professional video export pipelines that run entirely on your machine — deterministic, resumable, and auditable.
 
-1. Install Rust stable toolchain.
-2. Install Node 20+.
-3. Install UI dependencies:
-   - `npm --prefix apps/desktop/ui ci`
+OpsCinema is a local-first macOS desktop suite for video production workflows with deterministic, resumable export pipelines and comprehensive bundle verification. Built on a modular Rust workspace with Tauri 2 for the desktop shell, it emphasizes correctness — every export produces a verifiable manifest, every bundle can be re-verified post-facto.
 
-## Verification Commands
+## Features
 
-- `make verify`
-- `make soak` (set `SOAK_SECS=<N>` for longer soak)
-- `make package` (validates Tauri build path; falls back to runtime compile if `cargo tauri` is unavailable)
-- `make bundle-verify-smoke`
-- `make clean-local` (removes local caches/artifacts: `target`, UI `node_modules`, `.DS_Store`)
-- `make release-hardening` (verify + soak + package)
-- `make release-final` (release-hardening + bundle/export smoke checks)
+- **Deterministic export pipelines** — same input + same config always produces the same output bundle
+- **Resumable exports** — interrupted jobs pick up from the last verified checkpoint
+- **Bundle verification** — BLAKE3 content hashing with SDK-level verifier for export integrity
+- **IPC command surface** — all operations exposed as typed Tauri IPC commands
+- **Soak testing** — configurable soak validation for capture pipeline reliability
+- **Modular crate architecture** — types, IPC, export manifest, and verifier SDK in separate crates
 
-## Make Targets
+## Quick Start
 
-- `make verify` runs the canonical verification ladder and auto-builds UI `dist` before runtime compile checks when missing.
-- `make soak` runs the capture soak validation (`SOAK_SECS=30` default).
-- `make package` validates the Tauri build path.
-- `make package-bundle` builds `app,dmg` bundle artifacts when `cargo tauri` is available.
-- `make clean-local` removes local build/dependency caches and Finder metadata files.
-- `make release-hardening` runs `verify + soak + package`.
-- `make release-preflight` aliases `release-hardening`.
-- `make release-final` runs `release-hardening + bundle-verify-smoke`.
+### Prerequisites
+- Rust stable toolchain
+- Node.js 20+
 
-## Artifact Verification
+### Installation
+```bash
+git clone https://github.com/saagpatel/OPscinema
+cd OPscinema
+npm --prefix apps/desktop/ui ci
+```
 
-Use the backend export verifier for generated bundles:
+### Usage
+```bash
+# Full verification ladder
+make verify
 
-- `export_verify_bundle` IPC command via app flow, or
-- `make bundle-verify-smoke` for targeted tutorial/proof/runbook regression checks.
+# Run soak test (30s default)
+make soak
 
-For release details, see `/Users/d/Projects/OPscinema/docs/release-checklist.md`.
-For full release + notarization operations, see `/Users/d/Projects/OPscinema/docs/RELEASE_PROCESS.md`.
+# Build Tauri bundle
+make package
+
+# Release preflight
+make release-hardening
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Desktop shell | Tauri 2 |
+| Backend | Rust 2021 workspace — opscinema_types, opscinema_ipc, opscinema_export_manifest, opscinema_verifier_sdk |
+| Hashing | BLAKE3 |
+| Persistence | SQLite via rusqlite (bundled) |
+| IPC | Tauri typed command surface |
+
+## License
+
+MIT
