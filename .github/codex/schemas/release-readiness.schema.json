@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ready_to_ship", "summary", "blockers", "recommended_actions"],
+  "properties": {
+    "ready_to_ship": {"type": "boolean"},
+    "summary": {"type": "string", "minLength": 1},
+    "blockers": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {"type": "string"}
+    },
+    "recommended_actions": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {"type": "string"}
+    }
+  }
+}

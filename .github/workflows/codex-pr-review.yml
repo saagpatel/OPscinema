@@ -1,0 +1,128 @@
+name: Codex PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  review:
+    if: ${{ github.event.pull_request.head.repo.fork == false && contains(github.event.pull_request.labels.*.name, 'codex-review') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      final_message: ${{ steps.run_codex.outputs.final-message }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Pre-fetch base and head refs
+        run: |
+          git fetch --no-tags origin \
+            ${{ github.event.pull_request.base.ref }} \
+            +refs/pull/${{ github.event.pull_request.number }}/head
+
+      - name: Build sanitized prompt context
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          python3 .github/codex/scripts/sanitize_pr_metadata.py \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            > /tmp/pr-sanitized.md
+
+          cat .github/codex/prompts/pr-review.md > /tmp/runtime-pr-review.md
+          printf "\n\n" >> /tmp/runtime-pr-review.md
+          cat /tmp/pr-sanitized.md >> /tmp/runtime-pr-review.md
+
+      - name: Check Codex secret is configured
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "::error title=Missing OPENAI_API_KEY::Add the OPENAI_API_KEY repository secret before using the Codex review workflow."
+            exit 1
+          fi
+
+      - name: Run Codex PR review
+        id: run_codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: /tmp/runtime-pr-review.md
+          output-schema-file: .github/codex/schemas/pr-review.schema.json
+          output-file: codex-pr-review.json
+          safety-strategy: drop-sudo
+          sandbox: read-only
+          allow-users: saagar210
+
+      - name: Upload Codex review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-pr-review-${{ github.run_id }}
+          path: codex-pr-review.json
+
+  post_feedback:
+    runs-on: ubuntu-latest
+    needs: review
+    if: ${{ needs.review.outputs.final_message != '' }}
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post Codex review findings
+        uses: actions/github-script@v7
+        env:
+          CODEX_FINAL_MESSAGE: ${{ needs.review.outputs.final_message }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const raw = process.env.CODEX_FINAL_MESSAGE || "";
+            const marker = "<!-- codex-review-comment -->";
+            let body = marker + "\n## Codex Review\n\n";
+            try {
+              const parsed = JSON.parse(raw);
+              body += `${parsed.summary}\n\n`;
+              if (Array.isArray(parsed.findings) && parsed.findings.length > 0) {
+                body += "### Findings\n";
+                for (const finding of parsed.findings) {
+                  body += `- **${finding.severity.toUpperCase()}** ${finding.title} (${finding.file})\n`;
+                  body += `  - ${finding.recommendation}\n`;
+                }
+              } else {
+                body += "No material risks found.\n";
+              }
+            } catch (err) {
+              body += "Unable to parse structured output. Raw response:\n\n";
+                body += "```json\n" + raw + "\n```\n";
+            }
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }

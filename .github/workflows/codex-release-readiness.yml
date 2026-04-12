@@ -1,0 +1,82 @@
+name: Codex Release Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_ref:
+        description: "Git ref to evaluate (branch or tag)"
+        required: false
+        default: "main"
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.target_ref }}
+
+      - name: Check Codex secret is configured
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "::error title=Missing OPENAI_API_KEY::Add the OPENAI_API_KEY repository secret before using the Codex release-readiness workflow."
+            exit 1
+          fi
+
+      - name: Run Codex release readiness report
+        id: run_codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/release-readiness.md
+          output-schema-file: .github/codex/schemas/release-readiness.schema.json
+          output-file: codex-release-readiness.json
+          safety-strategy: drop-sudo
+          sandbox: read-only
+          allow-users: saagar210
+
+      - name: Publish job summary
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("codex-release-readiness.json").read_text())
+          lines = [
+              "# Codex Release Readiness",
+              "",
+              f"- Ready to ship: {'yes' if data.get('ready_to_ship') else 'no'}",
+              f"- Summary: {data.get('summary', '').strip()}",
+          ]
+
+          blockers = data.get("blockers") or []
+          actions = data.get("recommended_actions") or []
+
+          lines.append("")
+          lines.append("## Blockers")
+          if blockers:
+              lines.extend([f"- {item}" for item in blockers])
+          else:
+              lines.append("- none")
+
+          lines.append("")
+          lines.append("## Recommended actions")
+          if actions:
+              lines.extend([f"- {item}" for item in actions])
+          else:
+              lines.append("- none")
+
+          Path(Path.home().joinpath("summary.md")).write_text("\n".join(lines) + "\n")
+          PY
+          cat "$HOME/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload readiness report
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-release-readiness-${{ github.run_id }}
+          path: codex-release-readiness.json
