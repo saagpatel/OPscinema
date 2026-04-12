@@ -1,0 +1,15 @@
+{
+  "source": "vite",
+  "totalBytes": 169250,
+  "assets": {
+    "index-Bpp7DIAR.js": 165771,
+    "index-IaIZpIwz.css": 3073
+  },
+  "html": {
+    "index.html": 406
+  },
+  "capturedAt": "2026-04-12T05:30:15.047Z",
+  "ready": true,
+  "acceptedAt": "2026-04-12T05:30:15.162Z",
+  "acceptanceSource": "scripts/perf/refresh-baselines.mjs"
+}
