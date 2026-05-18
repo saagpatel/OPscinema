@@ -88,6 +88,6 @@ pub fn list_for_step(
         .into_iter()
         .filter(|a| a.step_id == step_id)
         .collect::<Vec<_>>();
-    anchors.sort_by(|a, b| a.anchor_id.cmp(&b.anchor_id));
+    anchors.sort_by_key(|a| a.anchor_id);
     Ok(anchors)
 }
