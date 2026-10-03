@@ -1,19 +1,23 @@
 # OpsCinema Release Process
 
 This runbook describes how to cut, validate, publish, and notarize OpsCinema releases.
+For local synthetic checks before any release action, use the
+[verification instructions](../README.md#verification).
 
 ## Prerequisites
 
-1. Local environment:
-   - Rust stable toolchain
-   - Node 20+
+1. Local environment (run commands from the repository root):
+   - macOS with Xcode Command Line Tools
+   - Rust stable toolchain, Node 20+, npm, and make
+   - UI dependencies installed with `npm --prefix apps/desktop/ui ci`
+   - tauri-cli (`cargo tauri`) for `make package-bundle`
    - `gh` CLI authenticated to the target repo
 2. Release validation commands available:
    - `make release-final`
    - `make package-bundle`
 3. GitHub repository configured with release workflows:
-   - `/Users/d/Projects/OPscinema/.github/workflows/release.yml`
-   - `/Users/d/Projects/OPscinema/.github/workflows/notarize.yml`
+   - `.github/workflows/release.yml`
+   - `.github/workflows/notarize.yml`
 
 ## Required GitHub Secrets (Notarization)
 
@@ -37,11 +41,11 @@ Set these repository secrets before using notarization automation:
    - `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
    - `git push origin vX.Y.Z`
 5. Create GitHub release:
-   - `gh release create vX.Y.Z --repo saagar210/OPscinema --title "vX.Y.Z" --notes "<release notes>"`
+   - `gh release create vX.Y.Z --repo saagpatel/OPscinema --title "vX.Y.Z" --notes "<release notes>"`
 
 ## Notarization Automation
 
-`/Users/d/Projects/OPscinema/.github/workflows/notarize.yml` supports:
+`.github/workflows/notarize.yml` supports:
 
 1. Automatic run on GitHub Release publication (`release.published`).
 2. Manual run via `workflow_dispatch` for an existing tag.
@@ -58,9 +62,9 @@ Workflow behavior:
 ## Post-Release Checks
 
 1. Confirm release is published and assets are attached:
-   - `gh release view vX.Y.Z --repo saagar210/OPscinema`
+   - `gh release view vX.Y.Z --repo saagpatel/OPscinema`
 2. Confirm security baseline:
-   - `gh api "/repos/saagar210/OPscinema/dependabot/alerts?state=open"`
+   - `gh api "/repos/saagpatel/OPscinema/dependabot/alerts?state=open"`
 3. Confirm local and remote tags align:
    - `git ls-remote --tags origin | rg "refs/tags/vX.Y.Z$"`
 
