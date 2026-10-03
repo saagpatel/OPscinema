@@ -39,7 +39,7 @@ cargo run --locked -p opscinema_desktop_backend --features runtime --bin opscine
 ```
 
 This launches the real macOS app and creates `state.sqlite` and `assets` in its
-Tauri app-data directory. Use a dedicated test account for manual capture/export
+Tauri app-data directory. Use a dedicated macOS test account for manual capture/export
 checks; screen recording and accessibility permissions are separate from the
 synthetic checks below. Do not launch it against personal sessions as a smoke test.
 
@@ -48,10 +48,14 @@ synthetic checks below. Do not launch it against personal sessions as a smoke te
 Run commands from the repository root with the checked-in `Cargo.lock` and UI
 `package-lock.json`. Install UI dependencies with the `npm ci` command above.
 
-For a focused check without starting the desktop app or capturing the screen:
+For a focused check without starting the desktop app or capturing the screen,
+use a clean isolated checkout. The Rust IPC test writes the tracked
+`apps/desktop/ui/src/ipc/generated.ts` before reading it back; preserve any pending
+edits to that file before running it. The same test also runs under `make test`
+and `make verify`.
 
 ```bash
-# Pure generated IPC contract/determinism test.
+# Generated IPC contract/determinism test (rewrites the generated client).
 cargo test --locked -p opscinema_ipc generated_client_has_no_any_and_is_deterministic
 
 # TypeScript check, typed IPC guard, and an integration flow with mocked IPC.
@@ -77,7 +81,7 @@ select individual parts of the ladder. `npm --prefix apps/desktop/ui run build`
 checks the production frontend build; no separate JavaScript lint script exists.
 
 For UI changes, also inspect the affected screens in the desktop app using a
-dedicated test account and synthetic sessions. A browser preview from
+dedicated macOS test account and synthetic sessions. A browser preview from
 `npm --prefix apps/desktop/ui run dev -- --host 127.0.0.1` can check layout, but
 Tauri IPC is unavailable there unless explicitly mocked; it does not verify the
 native capture/export flow. Documentation-only changes do not require a browser.
