@@ -18,8 +18,9 @@ OpsCinema is a local-first macOS desktop suite for video production workflows wi
 ## Quick Start
 
 ### Prerequisites
-- Rust stable toolchain
-- Node.js 20+
+- macOS with Xcode Command Line Tools for the desktop runtime and full verification ladder
+- Rust stable toolchain (including rustfmt and clippy), Node.js 20+, npm, and make
+- `cargo tauri` (tauri-cli) only for actual `.app`/`.dmg` bundle creation
 
 ### Installation
 ```bash
@@ -28,20 +29,65 @@ cd OPscinema
 npm --prefix apps/desktop/ui ci
 ```
 
-### Usage
+### Run the desktop app
+
+From the repository root, after installing UI dependencies:
+
 ```bash
-# Full verification ladder
-make verify
-
-# Run soak test (30s default)
-make soak
-
-# Build Tauri bundle
-make package
-
-# Release preflight
-make release-hardening
+npm --prefix apps/desktop/ui run build
+cargo run --locked -p opscinema_desktop_backend --features runtime --bin opscinema-desktop
 ```
+
+This launches the real macOS app and creates `state.sqlite` and `assets` in its
+Tauri app-data directory. Use a dedicated test account for manual capture/export
+checks; screen recording and accessibility permissions are separate from the
+synthetic checks below. Do not launch it against personal sessions as a smoke test.
+
+## Verification
+
+Run commands from the repository root with the checked-in `Cargo.lock` and UI
+`package-lock.json`. Install UI dependencies with the `npm ci` command above.
+
+For a focused check without starting the desktop app or capturing the screen:
+
+```bash
+# Pure generated IPC contract/determinism test.
+cargo test --locked -p opscinema_ipc generated_client_has_no_any_and_is_deterministic
+
+# TypeScript check, typed IPC guard, and an integration flow with mocked IPC.
+npm --prefix apps/desktop/ui run test
+```
+
+For broader changes, `make verify` runs Rust format/clippy/workspace tests, the UI
+checks, runtime-feature compilation, and the synthetic fixture regressions. The
+[macOS CI workflow](.github/workflows/ci.yml) defines the corresponding checks.
+
+```bash
+# Prevent an inherited fixture-acceptance flag from rewriting expected hashes.
+env -u OPSCINEMA_ACCEPT_FIXTURE_HASH make verify
+
+# Focus on the stub-provider fixture matrix when export/capture logic changes.
+env -u OPSCINEMA_ACCEPT_FIXTURE_HASH make fixture-regression
+```
+
+The fixture tests use in-memory storage, stub providers, and temporary outputs.
+They establish synthetic behavior, not live macOS capture or release readiness.
+`make fmt`, `make clippy`, `make test`, `make ui-test`, and `make runtime-check`
+select individual parts of the ladder. `npm --prefix apps/desktop/ui run build`
+checks the production frontend build; no separate JavaScript lint script exists.
+
+For UI changes, also inspect the affected screens in the desktop app using a
+dedicated test account and synthetic sessions. A browser preview from
+`npm --prefix apps/desktop/ui run dev -- --host 127.0.0.1` can check layout, but
+Tauri IPC is unavailable there unless explicitly mocked; it does not verify the
+native capture/export flow. Documentation-only changes do not require a browser.
+
+`make soak` is an optional 30-second stub-provider soak test (`SOAK_SECS=...`
+changes its duration). `make package` validates the Tauri build path with
+`--no-bundle`, or falls back to runtime compilation if tauri-cli is absent; it
+does **not** produce an app bundle. `make package-bundle` requires tauri-cli and
+creates `.app`/`.dmg` bundles. Signing, notarization, and publication are separate
+operator actions in the [release runbook](docs/RELEASE_PROCESS.md).
 
 ## Tech Stack
 
